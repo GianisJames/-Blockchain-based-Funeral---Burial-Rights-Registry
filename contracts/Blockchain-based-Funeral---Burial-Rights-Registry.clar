@@ -5,6 +5,9 @@
 (define-constant err-unauthorized (err u103))
 (define-constant err-invalid-witness (err u104))
 (define-constant err-consensus-not-met (err u105))
+(define-constant err-no-inheritor (err u106))
+(define-constant err-already-inherited (err u107))
+(define-constant err-insufficient-witness-approvals (err u108))
 
 (define-non-fungible-token burial-plot uint)
 
@@ -29,6 +32,21 @@
 )
 
 (define-map witness-signatures
+    { plot-id: uint, witness: principal }
+    bool
+)
+
+(define-map inheritance-records
+    uint
+    {
+        inheritor: principal,
+        witness-approvals: uint,
+        required-witness-approvals: uint,
+        inherited: bool
+    }
+)
+
+(define-map inheritance-witness-approvals
     { plot-id: uint, witness: principal }
     bool
 )
@@ -98,3 +116,43 @@
         (if (>= (get family-votes record) (get required-votes record))
             (ok true)
             err-consensus-not-met)))
+
+(define-public (designate-inheritor 
+    (plot-id uint) 
+    (inheritor principal) 
+    (required-witness-approvals uint))
+    (let ((record (unwrap! (map-get? burial-records plot-id) err-not-found)))
+        (asserts! (is-eq (get owner record) tx-sender) err-owner-only)
+        (map-set inheritance-records plot-id {
+            inheritor: inheritor,
+            witness-approvals: u0,
+            required-witness-approvals: required-witness-approvals,
+            inherited: false
+        })
+        (ok true)))
+
+(define-public (approve-inheritance (plot-id uint))
+    (let ((record (unwrap! (map-get? burial-records plot-id) err-not-found))
+          (inheritance (unwrap! (map-get? inheritance-records plot-id) err-no-inheritor)))
+        (asserts! (is-some (index-of (get witnesses record) tx-sender)) err-invalid-witness)
+        (asserts! (is-eq false (default-to false (map-get? inheritance-witness-approvals {plot-id: plot-id, witness: tx-sender}))) err-already-exists)
+        (map-set inheritance-witness-approvals {plot-id: plot-id, witness: tx-sender} true)
+        (map-set inheritance-records plot-id 
+            (merge inheritance {witness-approvals: (+ (get witness-approvals inheritance) u1)}))
+        (ok true)))
+
+(define-public (claim-inheritance (plot-id uint))
+    (let ((inheritance (unwrap! (map-get? inheritance-records plot-id) err-no-inheritor)))
+        (asserts! (is-eq (get inheritor inheritance) tx-sender) err-unauthorized)
+        (asserts! (is-eq false (get inherited inheritance)) err-already-inherited)
+        (asserts! (>= (get witness-approvals inheritance) (get required-witness-approvals inheritance)) err-insufficient-witness-approvals)
+        (try! (nft-transfer? burial-plot plot-id (unwrap! (nft-get-owner? burial-plot plot-id) err-not-found) tx-sender))
+        (map-set inheritance-records plot-id 
+            (merge inheritance {inherited: true}))
+        (ok true)))
+
+(define-read-only (get-inheritance-record (plot-id uint))
+    (map-get? inheritance-records plot-id))
+
+(define-read-only (is-inheritance-approved (plot-id uint) (witness principal))
+    (default-to false (map-get? inheritance-witness-approvals {plot-id: plot-id, witness: witness})))
