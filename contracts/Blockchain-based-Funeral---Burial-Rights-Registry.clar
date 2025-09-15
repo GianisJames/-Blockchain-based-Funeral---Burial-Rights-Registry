@@ -154,5 +154,10 @@
 (define-read-only (get-inheritance-record (plot-id uint))
     (map-get? inheritance-records plot-id))
 
+(define-public (remove-family-member (plot-id uint) (member principal))
+  (let ((record (unwrap! (map-get? burial-records plot-id) err-not-found)))
+    (asserts! (is-eq (get owner record) tx-sender) err-owner-only)
+    (map-delete family-members {plot-id: plot-id, member: member})
+    (ok true)))
 (define-read-only (is-inheritance-approved (plot-id uint) (witness principal))
     (default-to false (map-get? inheritance-witness-approvals {plot-id: plot-id, witness: witness})))
