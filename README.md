@@ -9,6 +9,7 @@ A decentralized solution for managing burial rights, last wishes, and family con
 - ✍️ Multi-signature witness verification
 - 👪 Family consensus voting system
 - 🏛️ Heritage preservation records
+- 🔄 Dynamic plot detail updates
 
 ## 📋 Contract Functions
 
@@ -21,6 +22,7 @@ A decentralized solution for managing burial rights, last wishes, and family con
 - `vote-on-plot`: Family member voting
 - `get-burial-record`: View burial plot details
 - `get-consensus-status`: Check voting consensus
+- `update-burial-plot-details`: Modify burial plot information
 
 ## 🚀 Getting Started
 
@@ -37,6 +39,8 @@ A decentralized solution for managing burial rights, last wishes, and family con
 
 ;; Add family members
 (contract-call? .burial-registry add-family-member u1 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
+;; Update burial plot details
+(contract-call? .burial-registry update-burial-plot-details u1 "Updated Memorial Gardens" 40567891 -73890124 "Updated peaceful corner plot")
 ```
 
 ## 🤝 Contributing

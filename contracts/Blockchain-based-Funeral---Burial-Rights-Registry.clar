@@ -159,5 +159,22 @@
     (asserts! (is-eq (get owner record) tx-sender) err-owner-only)
     (map-delete family-members {plot-id: plot-id, member: member})
     (ok true)))
+(define-public (update-burial-plot-details
+    (plot-id uint)
+    (new-location (string-ascii 64))
+    (new-gps-lat int)
+    (new-gps-long int)
+    (new-last-wishes (string-ascii 256)))
+    (let ((record (unwrap! (map-get? burial-records plot-id) err-not-found)))
+        (asserts! (is-eq (get owner record) tx-sender) err-owner-only)
+        (map-set burial-records plot-id
+            (merge record {
+                location: new-location,
+                gps-lat: new-gps-lat,
+                gps-long: new-gps-long,
+                last-wishes: new-last-wishes
+            }))
+        (ok true)))
+
 (define-read-only (is-inheritance-approved (plot-id uint) (witness principal))
     (default-to false (map-get? inheritance-witness-approvals {plot-id: plot-id, witness: witness})))
