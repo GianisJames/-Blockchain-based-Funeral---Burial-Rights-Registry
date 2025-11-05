@@ -10,6 +10,7 @@ A decentralized solution for managing burial rights, last wishes, and family con
 - 👪 Family consensus voting system
 - 🏛️ Heritage preservation records
 - 🔄 Dynamic plot detail updates
+- 🔀 Consensus-based ownership transfer mechanism
 
 ## 📋 Contract Functions
 
@@ -23,6 +24,11 @@ A decentralized solution for managing burial rights, last wishes, and family con
 - `get-burial-record`: View burial plot details
 - `get-consensus-status`: Check voting consensus
 - `update-burial-plot-details`: Modify burial plot information
+- `propose-transfer`: Initiate ownership transfer proposal
+- `approve-transfer`: Approve proposed ownership transfer
+- `execute-transfer`: Execute approved ownership transfer
+- `get-transfer-proposal`: View transfer proposal details
+- `is-transfer-approved`: Check transfer approval status
 
 ## 🚀 Getting Started
 
@@ -41,6 +47,15 @@ A decentralized solution for managing burial rights, last wishes, and family con
 (contract-call? .burial-registry add-family-member u1 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 ;; Update burial plot details
 (contract-call? .burial-registry update-burial-plot-details u1 "Updated Memorial Gardens" 40567891 -73890124 "Updated peaceful corner plot")
+
+;; Propose ownership transfer
+(contract-call? .burial-registry propose-transfer u1 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
+
+;; Approve transfer (by family members)
+(contract-call? .burial-registry approve-transfer u1)
+
+;; Execute transfer once consensus is reached
+(contract-call? .burial-registry execute-transfer u1)
 ```
 
 ## 🤝 Contributing

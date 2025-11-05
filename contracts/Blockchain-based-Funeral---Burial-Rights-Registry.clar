@@ -8,6 +8,10 @@
 (define-constant err-no-inheritor (err u106))
 (define-constant err-already-inherited (err u107))
 (define-constant err-insufficient-witness-approvals (err u108))
+(define-constant err-transfer-not-found (err u109))
+(define-constant err-transfer-already-approved (err u110))
+(define-constant err-transfer-not-proposed (err u111))
+(define-constant err-transfer-already-executed (err u112))
 
 (define-non-fungible-token burial-plot uint)
 
@@ -48,6 +52,21 @@
 
 (define-map inheritance-witness-approvals
     { plot-id: uint, witness: principal }
+    bool
+)
+
+(define-map transfer-proposals
+    uint
+    {
+        new-owner: principal,
+        proposer: principal,
+        approvals: uint,
+        executed: bool
+    }
+)
+
+(define-map transfer-approvals
+    { plot-id: uint, approver: principal }
     bool
 )
 
@@ -178,3 +197,45 @@
 
 (define-read-only (is-inheritance-approved (plot-id uint) (witness principal))
     (default-to false (map-get? inheritance-witness-approvals {plot-id: plot-id, witness: witness})))
+
+(define-public (propose-transfer (plot-id uint) (new-owner principal))
+    (let ((record (unwrap! (map-get? burial-records plot-id) err-not-found)))
+        (asserts! (is-eq (get owner record) tx-sender) err-owner-only)
+        (asserts! (is-none (map-get? transfer-proposals plot-id)) err-already-exists)
+        (map-set transfer-proposals plot-id {
+            new-owner: new-owner,
+            proposer: tx-sender,
+            approvals: u0,
+            executed: false
+        })
+        (ok true)))
+
+(define-public (approve-transfer (plot-id uint))
+    (let ((record (unwrap! (map-get? burial-records plot-id) err-not-found))
+          (proposal (unwrap! (map-get? transfer-proposals plot-id) err-transfer-not-found)))
+        (asserts! (is-eq false (get executed proposal)) err-transfer-already-executed)
+        (asserts! (is-eq false (default-to false (map-get? transfer-approvals {plot-id: plot-id, approver: tx-sender}))) err-transfer-already-approved)
+        (asserts! (or (is-eq tx-sender (get owner record)) (is-some (map-get? family-members {plot-id: plot-id, member: tx-sender}))) err-unauthorized)
+        (map-set transfer-approvals {plot-id: plot-id, approver: tx-sender} true)
+        (map-set transfer-proposals plot-id
+            (merge proposal {approvals: (+ (get approvals proposal) u1)}))
+        (ok true)))
+
+(define-public (execute-transfer (plot-id uint))
+    (let ((record (unwrap! (map-get? burial-records plot-id) err-not-found))
+          (proposal (unwrap! (map-get? transfer-proposals plot-id) err-transfer-not-found)))
+        (asserts! (is-eq (get proposer proposal) tx-sender) err-unauthorized)
+        (asserts! (is-eq false (get executed proposal)) err-transfer-already-executed)
+        (asserts! (>= (get approvals proposal) (get required-votes record)) err-consensus-not-met)
+        (try! (nft-transfer? burial-plot plot-id (get owner record) (get new-owner proposal)))
+        (map-set burial-records plot-id
+            (merge record {owner: (get new-owner proposal)}))
+        (map-set transfer-proposals plot-id
+            (merge proposal {executed: true}))
+        (ok true)))
+
+(define-read-only (get-transfer-proposal (plot-id uint))
+    (map-get? transfer-proposals plot-id))
+
+(define-read-only (is-transfer-approved (plot-id uint) (approver principal))
+    (default-to false (map-get? transfer-approvals {plot-id: plot-id, approver: approver})))
