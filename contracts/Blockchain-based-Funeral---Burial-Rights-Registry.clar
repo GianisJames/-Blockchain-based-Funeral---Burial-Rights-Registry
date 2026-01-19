@@ -12,6 +12,7 @@
 (define-constant err-transfer-already-approved (err u110))
 (define-constant err-transfer-not-proposed (err u111))
 (define-constant err-transfer-already-executed (err u112))
+(define-constant err-no-backup (err u113))
 
 (define-non-fungible-token burial-plot uint)
 
@@ -68,6 +69,11 @@
 (define-map transfer-approvals
     { plot-id: uint, approver: principal }
     bool
+)
+
+(define-map backup-owners
+    uint
+    principal
 )
 
 (define-data-var next-plot-id uint u1)
@@ -136,9 +142,9 @@
             (ok true)
             err-consensus-not-met)))
 
-(define-public (designate-inheritor 
-    (plot-id uint) 
-    (inheritor principal) 
+(define-public (designate-inheritor
+    (plot-id uint)
+    (inheritor principal)
     (required-witness-approvals uint))
     (let ((record (unwrap! (map-get? burial-records plot-id) err-not-found)))
         (asserts! (is-eq (get owner record) tx-sender) err-owner-only)
@@ -148,6 +154,12 @@
             required-witness-approvals: required-witness-approvals,
             inherited: false
         })
+        (ok true)))
+
+(define-public (revoke-inheritance (plot-id uint))
+    (let ((record (unwrap! (map-get? burial-records plot-id) err-not-found)))
+        (asserts! (is-eq (get owner record) tx-sender) err-owner-only)
+        (map-delete inheritance-records plot-id)
         (ok true)))
 
 (define-public (approve-inheritance (plot-id uint))
@@ -239,3 +251,19 @@
 
 (define-read-only (is-transfer-approved (plot-id uint) (approver principal))
     (default-to false (map-get? transfer-approvals {plot-id: plot-id, approver: approver})))
+
+(define-public (designate-backup-owner (plot-id uint) (backup-owner principal))
+    (let ((record (unwrap! (map-get? burial-records plot-id) err-not-found)))
+        (asserts! (is-eq (get owner record) tx-sender) err-owner-only)
+        (map-set backup-owners plot-id backup-owner)
+        (ok true)))
+
+(define-public (claim-backup-ownership (plot-id uint))
+    (let ((backup (unwrap! (map-get? backup-owners plot-id) err-no-backup)))
+        (asserts! (is-eq backup tx-sender) err-unauthorized)
+        (try! (nft-transfer? burial-plot plot-id (unwrap! (nft-get-owner? burial-plot plot-id) err-not-found) tx-sender))
+        (map-set burial-records plot-id (merge (unwrap! (map-get? burial-records plot-id) err-not-found) {owner: tx-sender}))
+        (ok true)))
+
+(define-read-only (get-backup-owner (plot-id uint))
+    (map-get? backup-owners plot-id))

@@ -11,6 +11,9 @@ A decentralized solution for managing burial rights, last wishes, and family con
 - 🏛️ Heritage preservation records
 - 🔄 Dynamic plot detail updates
 - 🔀 Consensus-based ownership transfer mechanism
+- 🏠 Backup owner designation for emergency ownership transfer
+- 📋 Inheritance designation and claim system
+- 🔄 Inheritance revocation mechanism
 
 ## 📋 Contract Functions
 
@@ -29,6 +32,7 @@ A decentralized solution for managing burial rights, last wishes, and family con
 - `execute-transfer`: Execute approved ownership transfer
 - `get-transfer-proposal`: View transfer proposal details
 - `is-transfer-approved`: Check transfer approval status
+- `revoke-inheritance`: Cancel designated inheritor
 
 ## 🚀 Getting Started
 
@@ -56,6 +60,15 @@ A decentralized solution for managing burial rights, last wishes, and family con
 
 ;; Execute transfer once consensus is reached
 (contract-call? .burial-registry execute-transfer u1)
+
+;; Designate a backup owner for emergency transfer
+(contract-call? .burial-registry designate-backup-owner u1 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
+
+;; Claim ownership as backup owner in emergency
+(contract-call? .burial-registry claim-backup-ownership u1)
+
+;; Revoke inheritance designation
+(contract-call? .burial-registry revoke-inheritance u1)
 ```
 
 ## 🤝 Contributing
